@@ -758,7 +758,7 @@
     </div>
 
     <script>
-       // === DOM Elements (Seus elementos originais mantidos) ===
+       // === DOM Elements ===
         const pointer = document.getElementById("pointer");
         const speedText = document.getElementById("speed");
         const speedometer = document.getElementById("speedometer");
@@ -784,7 +784,7 @@
         }
         isMobile = detectMobile();
 
-        // Criação das marcas do painel (Sua função original)
+        // Criação das marcas do painel
         function createDialMarks() {
             const speedoWidth = speedometer.offsetWidth || 320;
             const outerRadius = speedoWidth / 2 - 22;
@@ -849,169 +849,42 @@
         }
 
         // ===============================================================
-        // === MOTOR NETFLIX / FAST: MEDIÇÃO REAL SEM BLOQUEIOS ========
+        // === FUNÇÃO RECEPTORA: RECEBE OS DADOS REAIS DO KODULAR ========
         // ===============================================================
+        
+        window.injetarVelocidadeReal = function(velocidade, download, upload, ping, jitter) {
+            setTargetSpeed(parseFloat(velocidade) || 0);
+            
+            if(download && downloadEl) downloadEl.textContent = download;
+            if(upload && uploadEl) uploadEl.textContent = upload;
+            if(ping && pingEl) pingEl.textContent = Math.round(ping);
+            if(jitter && jitterEl) jitterEl.textContent = jitter;
+        };
 
-        function startTest() {
-            if (running) return;
-            running = true;
-
-            // Limpa as caixas com os três pontinhos
+        // Quando o usuário clicar em INICIAR no site, avisa o Kodular para disparar a extensão real
+        function acionarTesteRealNoKodular() {
             if(downloadEl) downloadEl.textContent = "...";
             if(uploadEl) uploadEl.textContent = "...";
             if(pingEl) pingEl.textContent = "...";
             if(jitterEl) jitterEl.textContent = "...";
             setTargetSpeed(0);
-
-            // ETAPA 1: Medindo PING e JITTER reais via Google
-            const startTimePing = performance.now();
-            fetch("https://www.google.com/images/phd/px.gif?t=" + Math.random(), { mode: 'no-cors' })
-            .then(() => {
-                const endTimePing = performance.now();
-                const pingReal = Math.round(endTimePing - startTimePing);
-                const jitterReal = (Math.random() * (2.8 - 0.8) + 0.8).toFixed(1);
-                
-                if(pingEl) pingEl.textContent = pingReal;
-                if(jitterEl) jitterEl.textContent = jitterReal;
-
-                // ETAPA 2: Teste de Download Real (Puxando Bloco de Dados da Netflix/Fast)
-                // Arquivo padrão de teste de 25MB (perfeito para conexões de até 500 Mega)
-                const urlDownloadReal = "https://fast.com/assets/new-icon.png?dummy=" + Math.random();
-                const tamanhoArquivoBits = 25 * 1024 * 1024 * 8; // Convertido para bits
-                
-                const startTimeDL = performance.now();
-                
-                // Simulação visual de arranco enquanto o download acontece em segundo plano
-                let subidaVisual = 0;
-                let arrancoDL = setInterval(() => {
-                    if(!running) { clearInterval(arrancoDL); return; }
-                    subidaVisual += 12;
-                    if(subidaVisual > 140) subidaVisual = 145; // Aguarda estabilizar
-                    setTargetSpeed(subidaVisual);
-                    if(downloadEl) downloadEl.textContent = subidaVisual.toFixed(1);
-                }, 80);
-
-               // Executa o download real na placa de rede do celular (Arquivo pesado de 20MB)
-                fetch(urlDownloadReal, { mode: 'no-cors' })
-                .then(() => {
-                    clearInterval(arrancoDL);
-                    const endTimeDL = performance.now();
-                    const tempoGastoSegundos = (endTimeDL - startTimeDL) / 1000;
-                    
-                    // CÁLCULO REAL: Tamanho do arquivo dividido pelo tempo exato que o celular levou
-                    let velocidadeMbpsReal = (tamanhoArquivoBits / tempoGastoSegundos) / (1024 * 1024);
-                    
-                    // Calibração padrão para ajustar o ponteiro na tela
-                    velocidadeMbpsReal = velocidadeMbpsReal * 1.2; 
-
-                    // SEM FICÇÃO: Se a conta der erro, der menor que zero ou bizarra, joga para zero.
-                    if (isNaN(velocidadeMbpsReal) || velocidadeMbpsReal < 0) {
-                        velocidadeMbpsReal = 0;
-                    }
-
-                    // Força o seu ponteiro a ir para a velocidade REAL calculada
-                    setTargetSpeed(velocidadeMbpsReal);
-                    if(downloadEl) downloadEl.textContent = velocidadeMbpsReal.toFixed(1);
-
-                    // ETAPA 3: Teste de Upload Proporcional Baseado no Download Real
-                    setTimeout(() => {
-                        let velocidadeUploadReal = velocidadeMbpsReal * 0.85; // Upload realista de rede
-                        if (velocidadeUploadReal > 298) velocidadeUploadReal = 296.2; // Teto do painel
-
-                        let passoUpload = 0;
-                        let arrancoUP = setInterval(() => {
-                            if(!running) { clearInterval(arrancoUP); return; }
-                            passoUpload += (velocidadeUploadReal / 10);
-                            if(passoUpload >= velocidadeUploadReal) {
-                                passoUpload = velocidadeUploadReal;
-                                clearInterval(arrancoUP);
-                                running = false; // Finaliza o teste de verdade!
-                            }
-                            if(uploadEl) uploadEl.textContent = passoUpload.toFixed(1);
-                        }, 60);
-                    }, 1200);
-
-                }).catch(() => stopTest());
-            }).catch(() => stopTest());
-        }
-
-        function stopTest() {
-            running = false;
-            setTargetSpeed(0);
-            setTimeout(() => {
-                if (!running) {
-                    if(downloadEl) downloadEl.textContent = "0";
-                    if(uploadEl) uploadEl.textContent = "0";
-                    if(pingEl) pingEl.textContent = "0";
-                    if(jitterEl) jitterEl.textContent = "0";
-                }
-            }, 300);
-        }
-
-        // === Efeitos visuais e rotinas de inicialização originais mantidos ===
-        function addRipple(e, button) {
-            const ripple = document.createElement('span');
-            ripple.className = 'ripple';
-            const rect = button.getBoundingClientRect();
-            const size = Math.max(rect.width, rect.height);
-            ripple.style.width = ripple.style.height = size + 'px';
-            ripple.style.left = (e.clientX - rect.left - size / 2) + 'px';
-            ripple.style.top = (e.clientY - rect.top - size / 2) + 'px';
-            button.appendChild(ripple);
-            ripple.addEventListener('animationend', () => ripple.remove());
-        }
-
-        if(btnStart) btnStart.addEventListener('click', function(e) { addRipple(e, this); startTest(); });
-        if(btnStop) btnStop.addEventListener('click', function(e) { addRipple(e, this); stopTest(); });
-
-        function handleMouseMove(e) {
-            if (isMobile || running) return;
-            const rect = speedoWrapper.getBoundingClientRect();
-            const centerX = rect.left + rect.width / 2;
-            const centerY = rect.top + rect.height / 2;
-            const deltaX = (e.clientX - centerX) / (rect.width / 2);
-            const deltaY = (e.clientY - centerY) / (rect.height / 2);
-            const maxTilt = 14;
-            speedometer.style.transform = `rotateX(${8 - deltaY * maxTilt * 0.7}deg) rotateY(${deltaX * maxTilt}deg)`;
-            speedometer.style.transition = 'transform 0.2s ease-out';
-        }
-
-        function handleMouseLeave() {
-            if(speedometer) speedometer.style.transform = 'rotateX(8deg) rotateY(0deg)';
-        }
-
-        if (!isMobile && speedoWrapper) {
-            speedoWrapper.addEventListener('mousemove', handleMouseMove);
-            speedoWrapper.addEventListener('mouseleave', handleMouseLeave);
-        }
-
-        function detectConnection() {
-            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-            if (connection && connection.effectiveType) {
-                const typeMap = { 'slow-2g': '2G Lenta', '2g': '2G', '3g': '3G', '4g': '4G LTE', '5g': '5G' };
-                const typeName = typeMap[connection.effectiveType] || connection.effectiveType.toUpperCase();
-                const downlink = connection.downlink ? ` • ${connection.downlink} Mbps` : '';
-                if(networkEl) networkEl.innerHTML = `📶 Rede: ${typeName}${downlink}`;
-            } else {
-                if(networkEl) networkEl.innerHTML = '📶 Conexão ativa detectada';
+            
+            if (window.AppInventor) {
+                window.AppInventor.setWebViewString("INICIAR_TESTE_REAL");
             }
         }
+
+        if(btnStart) btnStart.addEventListener('click', function(e) { acionarTesteRealNoKodular(); });
+        if(btnStop) btnStop.addEventListener('click', function(e) { 
+            if (window.AppInventor) window.AppInventor.setWebViewString("PARAR_TESTE");
+        });
 
         window.addEventListener('resize', () => createDialMarks());
         
-        window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); running ? stopTest() : startTest(); }
-            if (e.code === 'Escape') { e.preventDefault(); stopTest(); }
-        });
-
         function init() {
             createDialMarks();
-            detectConnection();
             updateSpeedDisplay(0);
-            if(speedometer) {
-                speedometer.style.transform = 'rotateX(8deg) rotateY(0deg)';
-                speedometer.style.transition = 'transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1)';
-            }
+            if(speedometer) speedometer.style.transform = 'rotateX(8deg) rotateY(0deg)';
         }
 
         init();
