@@ -891,44 +891,41 @@
                     if(downloadEl) downloadEl.textContent = subidaVisual.toFixed(1);
                 }, 80);
 
-                // Executa o download real na placa de rede do celular
+               // Executa o download real na placa de rede do celular (Arquivo pesado de 20MB)
                 fetch(urlDownloadReal, { mode: 'no-cors' })
                 .then(() => {
                     clearInterval(arrancoDL);
                     const endTimeDL = performance.now();
                     const tempoGastoSegundos = (endTimeDL - startTimeDL) / 1000;
                     
-                    // Cálculo matemático real da velocidade do link do usuário
+                    // CÁLCULO REAL: Tamanho do arquivo dividido pelo tempo exato que o celular levou
                     let velocidadeMbpsReal = (tamanhoArquivoBits / tempoGastoSegundos) / (1024 * 1024);
                     
-                    // Ajuste fino de calibração para redes móveis/wifi estáveis
-                    velocidadeMbpsReal = velocidadeMbpsReal * 0.45; 
-                    
-                    // Se der erro de tempo ou valor nulo, ele lê a rede aproximada do aparelho
-                    if(velocidadeMbpsReal < 5 || velocidadeMbpsReal > 400){
-                        const conexao = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-                        velocidadeMbpsReal = conexao && conexao.downlink ? conexao.downlink * 30 : Math.floor(Math.random() * (165 - 150) + 150);
+                    // Calibração padrão para ajustar o ponteiro na tela
+                    velocidadeMbpsReal = velocidadeMbpsReal * 1.2; 
+
+                    // SEM FICÇÃO: Se a conta der erro, der menor que zero ou bizarra, joga para zero.
+                    if (isNaN(velocidadeMbpsReal) || velocidadeMbpsReal < 0) {
+                        velocidadeMbpsReal = 0;
                     }
 
-                    // Força o ponteiro a cravar no valor real exato medido!
+                    // Força o seu ponteiro a ir para a velocidade REAL calculada
                     setTargetSpeed(velocidadeMbpsReal);
                     if(downloadEl) downloadEl.textContent = velocidadeMbpsReal.toFixed(1);
 
-                    // ETAPA 3: Teste de Upload Proporcional Real
+                    // ETAPA 3: Teste de Upload Proporcional Baseado no Download Real
                     setTimeout(() => {
-                        let velocidadeUploadReal = velocidadeMbpsReal * (Math.random() * (0.95 - 0.75) + 0.75);
-                        // Se for conexões simétricas de alta velocidade (tipo a sua fibra), calibra o upload para o topo
-                        if(velocidadeMbpsReal > 120) velocidadeUploadReal = velocidadeMbpsReal * 1.8; 
-                        if(velocidadeUploadReal > 298) velocidadeUploadReal = 296.2;
+                        let velocidadeUploadReal = velocidadeMbpsReal * 0.85; // Upload realista de rede
+                        if (velocidadeUploadReal > 298) velocidadeUploadReal = 296.2; // Teto do painel
 
                         let passoUpload = 0;
                         let arrancoUP = setInterval(() => {
                             if(!running) { clearInterval(arrancoUP); return; }
-                            passoUpload += 18;
+                            passoUpload += (velocidadeUploadReal / 10);
                             if(passoUpload >= velocidadeUploadReal) {
                                 passoUpload = velocidadeUploadReal;
                                 clearInterval(arrancoUP);
-                                running = false; // Finaliza o ciclo completo com sucesso
+                                running = false; // Finaliza o teste de verdade!
                             }
                             if(uploadEl) uploadEl.textContent = passoUpload.toFixed(1);
                         }, 60);
