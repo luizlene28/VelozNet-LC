@@ -758,7 +758,7 @@
     </div>
 
     <script>
-        // === DOM Elements (Seus elementos originais mantidos intactos) ===
+        // === DOM Elements (Seus elementos originais do design) ===
         const pointer = document.getElementById("pointer");
         const speedText = document.getElementById("speed");
         const speedometer = document.getElementById("speedometer");
@@ -778,17 +778,14 @@
         let targetSpeed = 0;
         let animationId = null;
         let isMobile = false;
+        let workerMedidor = null; // Guardará o motor do teste em segundo plano
 
         function detectMobile() {
-            return (
-                'ontouchstart' in window ||
-                navigator.maxTouchPoints > 0 ||
-                window.matchMedia('(pointer: coarse)').matches
-            );
+            return ('ontouchstart' in window || navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches);
         }
         isMobile = detectMobile();
 
-        // Create tick marks and numbers with precise centering
+        // Criação das marcas do painel (Sua função original)
         function createDialMarks() {
             const speedoWidth = speedometer.offsetWidth || 320;
             const outerRadius = speedoWidth / 2 - 22;
@@ -806,13 +803,8 @@
                 const tick = document.createElement('div');
                 tick.className = isMajor ? 'tick major' : 'tick minor';
                 tick.style.transform = `rotate(${angleDeg}deg)`;
-                if (isMajor) {
-                    tick.style.marginTop = `-${outerRadius}px`;
-                    tick.style.height = `${tickMajorLength}px`;
-                } else {
-                    tick.style.marginTop = `-${outerRadius}px`;
-                    tick.style.height = `${tickMinorLength}px`;
-                }
+                tick.style.marginTop = `-${outerRadius}px`;
+                tick.style.height = isMajor ? `${tickMajorLength}px` : `${tickMinorLength}px`;
                 tickMarksContainer.appendChild(tick);
 
                 if (isMajor) {
@@ -854,100 +846,106 @@
 
         function setTargetSpeed(val) {
             targetSpeed = Math.max(0, Math.min(300, val));
-            if (!animationId) {
-                animationId = requestAnimationFrame(animateSpeed);
-            }
+            if (!animationId) animationId = requestAnimationFrame(animateSpeed);
         }
 
         // ===============================================================
-        // === NOVO MOTOR: MEDIÇÃO REAL AUTOMATIZADA (CAMINHO 2) ===
+        // === MOTOR LIBRESPEED: CONEXÃO COM SERVIDORES DE TESTE REAIS ===
         // ===============================================================
-
-        function atualizarTodasCaixas(download, upload, ping, jitter) {
-            if(downloadEl) downloadEl.textContent = download;
-            if(uploadEl) uploadEl.textContent = upload;
-            if(pingEl) pingEl.textContent = ping;
-            if(jitterEl) jitterEl.textContent = jitter;
-        }
 
         function startTest() {
             if (running) return;
             running = true;
 
-            // 1. Limpa o painel com os três pontinhos clássicos
-            atualizarTodasCaixas('...', '...', '...', '...');
+            // Limpa a tela colocando os três pontinhos clássicos
+            if(downloadEl) downloadEl.textContent = "...";
+            if(uploadEl) uploadEl.textContent = "...";
+            if(pingEl) pingEl.textContent = "...";
+            if(jitterEl) jitterEl.textContent = "...";
             setTargetSpeed(0);
 
-            // Etapa A: Coleta de Latência Real (Ping e Jitter)
-            setTimeout(() => {
-                const pingReal = Math.floor(Math.random() * (22 - 12) + 12);
-                const jitterReal = (Math.random() * (3.1 - 0.9) + 0.9).toFixed(1);
-                atualizarTodasCaixas('0.0', '0.0', pingReal, jitterReal);
+            // Criamos o WebWorker dinâmico do LibreSpeed (baixa dados de forma real sem travar o celular)
+            // Usamos os servidores públicos mundiais de teste da infraestrutura deles
+            workerMedidor = new Worker(URL.createObjectURL(new Blob([`
+                importScripts('https://cdnjs.cloudflare.com/ajax/libs/librespeed-cli/1.0.1/speedtest_worker.js');
+            `], {type: 'application/javascript'})));
 
-                // Etapa B: Puxar velocidade real da placa de rede do dispositivo
-                let velocidadeRealDispositivo = 50;
-                const conexaoNativa = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            // Configurações secretas para o teste rodar liso em qualquer operadora
+            workerMedidor.postMessage(JSON.stringify({
+                cmd: "start",
+                config: {
+                    time_dl: 7, // Tempo testando download (7 segundos)
+                    time_ul: 7, // Tempo testando upload (7 segundos)
+                    count_ping: 10,
+                    url_dl: "garbage.php",
+                    url_ul: "empty.php",
+                    url_ping: "empty.php",
+                    url_getIp: "getIP.php"
+                },
+                servers: [{
+                    name: "Global Open Server",
+                    url_dl: "https://librespeed.org/backend/garbage.php",
+                    url_ul: "https://librespeed.org/backend/empty.php",
+                    url_ping: "https://librespeed.org/backend/empty.php",
+                    url_getIp: "https://librespeed.org/backend/getIP.php"
+                }]
+            }));
+
+            // Escuta as respostas que vêm em tempo real do servidor
+            workerMedidor.onmessage = function(e) {
+                const dados = JSON.parse(e.data);
                 
-                if (conexaoNativa && conexaoNativa.downlink) {
-                    // Conversão matemática justa para converter o downlink do navegador em Mbps de provedor
-                    velocidadeRealDispositivo = conexaoNativa.downlink * 33.5;
-                } else {
-                    // Caso o aparelho oculte a informação de rede, gera na casa real dos seus 300 Mega com variação natural
-                    velocidadeRealDispositivo = Math.floor(Math.random() * (308 - 285) + 285);
+                // Se der erro ou finalizar, desliga o motor
+                if (dados.testState === 5) { 
+                    stopTest(); 
+                    return; 
                 }
 
-                // Teto de segurança para o ponteiro não quebrar o painel de 300
-                if(velocidadeRealDispositivo > 298) velocidadeRealDispositivo = 296.4;
+                // 1. Atualiza Ping e Jitter reais na tela
+                if(dados.pingStatus && pingEl) pingEl.textContent = Math.round(dados.pingStatus);
+                if(dados.jitterStatus && jitterEl) jitterEl.textContent = dados.jitterStatus;
 
-                // Executa a subida suave do ponteiro baseada na velocidade real capturada
-                let passoVelocidade = 0;
-                let motorArrancoDL = setInterval(() => {
-                    passoVelocidade += (velocidadeRealDispositivo / 15);
-                    if(passoVelocidade >= velocidadeRealDispositivo) {
-                        passoVelocidade = velocidadeRealDispositivo;
-                        clearInterval(motorArrancoDL);
-                        
-                        // Finalizou download! Aguarda 1 segundo e vai para o Upload
-                        setTimeout(() => rodarUploadReal(velocidadeRealDispositivo, pingReal, jitterReal), 1000);
-                    }
-                    setTargetSpeed(passoVelocidade);
-                    if(downloadEl) downloadEl.textContent = passoVelocidade.toFixed(1);
-                }, 60);
-
-            }, 1200);
-        }
-
-        function rodarUploadReal(downloadFinal, ping, jitter) {
-            // Calcula velocidade de upload proporcional e real do aparelho
-            let velocidadeUploadReal = downloadFinal * 0.65;
-            if (velocidadeUploadReal > 180) {
-                // Se sua internet for de 300 Mega de Up, ele calibra dinamicamente para alcançar a casa dos 300
-                velocidadeUploadReal = Math.floor(Math.random() * (312 - 290) + 290);
-            }
-
-            let passoUpload = 0;
-            let motorArrancoUP = setInterval(() => {
-                passoUpload += (velocidadeUploadReal / 12);
-                if(passoUpload >= velocidadeUploadReal) {
-                    passoUpload = velocidadeUploadReal;
-                    clearInterval(motorArrancoUP);
-                    running = false; // Finaliza o ciclo completo do teste
+                // 2. Estado 1 = Testando Download Real
+                if (dados.testState === 1) {
+                    const dlReal = parseFloat(dados.dlStatus) || 0;
+                    setTargetSpeed(dlReal); // Faz o ponteiro subir exatamente na velocidade da rede
+                    if(downloadEl) downloadEl.textContent = dlReal > 0 ? dlReal.toFixed(1) : "...";
                 }
-                if(uploadEl) uploadEl.textContent = passoUpload.toFixed(1);
-            }, 60);
+
+                // 3. Estado 3 = Testando Upload Real
+                if (dados.testState === 3) {
+                    const ulReal = parseFloat(dados.ulStatus) || 0;
+                    setTargetSpeed(0); // Coloca o ponteiro em descanso para a leitura estática do upload
+                    if(uploadEl) uploadEl.textContent = ulReal > 0 ? ulReal.toFixed(1) : "...";
+                }
+
+                // Teste finalizado com sucesso!
+                if (dados.testState === 4) {
+                    running = false;
+                    setTargetSpeed(0);
+                    if(workerMedidor) workerMedidor.terminate();
+                }
+            };
         }
 
         function stopTest() {
             running = false;
             setTargetSpeed(0);
+            if(workerMedidor) {
+                workerMedidor.terminate();
+                workerMedidor = null;
+            }
             setTimeout(() => {
                 if (!running) {
-                    atualizarTodasCaixas('0', '0', '0', '0');
+                    if(downloadEl) downloadEl.textContent = "0";
+                    if(uploadEl) uploadEl.textContent = "0";
+                    if(pingEl) pingEl.textContent = "0";
+                    if(jitterEl) jitterEl.textContent = "0";
                 }
             }, 300);
         }
 
-        // === Efeitos visuais e rotinas de inicialização mantidas ===
+        // === Efeitos visuais e rotinas de inicialização originais mantidos ===
         function addRipple(e, button) {
             const ripple = document.createElement('span');
             ripple.className = 'ripple';
