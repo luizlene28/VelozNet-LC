@@ -844,6 +844,39 @@
             pointer.style.transform = `translateX(-50%) rotate(${rotation}deg)`;
         }
 
+
+        // === FUNÇÕES PARA O KODULAR ENVIAR DADOS REAIS ===
+
+// Esta função recebe a velocidade real do Kodular e atualiza o velocímetro
+function injetarVelocidadeReal(velocidade, download, upload, ping, jitter) {
+    if (running) stopTest(); // Para a simulação antiga se estiver rodando
+    
+    // Atualiza o ponteiro e o número central com o valor real
+    setTargetSpeed(velocidade);
+    
+    // Atualiza as caixinhas de texto com os valores reais passados pelo Kodular
+    if(download) document.getElementById("download").textContent = download;
+    if(upload) document.getElementById("upload").textContent = upload;
+    if(ping) document.getElementById("ping").textContent = Math.round(ping);
+    if(jitter) document.getElementById("jitter").textContent = jitter;
+}
+
+// Vamos criar uma função para o botão "Iniciar" chamar o Kodular
+function acionarTesteRealNoKodular() {
+    // Limpa os dados antigos colocando três pontinhos de carregando
+    document.getElementById("download").textContent = "...";
+    document.getElementById("upload").textContent = "...";
+    document.getElementById("ping").textContent = "...";
+    document.getElementById("jitter").textContent = "...";
+    
+    setTargetSpeed(0); // Garante que o ponteiro comece do zero
+    
+    // Envia o grito para o Kodular: "Começa o teste real!"
+    if (window.AppInventor) {
+        window.AppInventor.setWebViewString("INICIAR_TESTE_REAL");
+    }
+}
+
         function animateSpeed() {
             if (!running && Math.abs(currentSpeed - targetSpeed) < 0.3) {
                 currentSpeed = targetSpeed;
