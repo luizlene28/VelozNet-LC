@@ -837,13 +837,13 @@
             }
         }
 
+        
         function updateSpeedDisplay(val) {
             const clamped = Math.max(0, Math.min(300, val));
             speedText.textContent = Math.round(clamped);
             const rotation = -130 + (clamped / 300) * 260;
             pointer.style.transform = `translateX(-50%) rotate(${rotation}deg)`;
         }
-
 
         // === FUNÇÕES PARA O KODULAR ENVIAR DADOS REAIS ===
 
