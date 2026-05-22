@@ -1,0 +1,1 @@
+https://speed.cloudflare.com/__down__speed?bytes=25000000
