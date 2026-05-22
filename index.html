@@ -848,29 +848,34 @@
             if (!animationId) animationId = requestAnimationFrame(animateSpeed);
         }
 
-        // ===============================================================
-        // === FUNÇÃO RECEPTORA: RECEBE OS DADOS REAIS DO KODULAR ========
-        // ===============================================================
+        // ====================================================================
+        // === FUNÇÃO RECEPTORA ATUALIZADA: CONECTA COM O SEU KODULAR DO APP ==
+        // ====================================================================
         
-        window.injetarVelocidadeReal = function(velocidade, download, upload, ping, jitter) {
+        window.atualizarVelocidade = function(velocidade) {
+            // Move o ponteiro do velocímetro e muda o número do centro
             setTargetSpeed(parseFloat(velocidade) || 0);
             
-            if(download && downloadEl) downloadEl.textContent = download;
-            if(upload && uploadEl) uploadEl.textContent = upload;
-            if(ping && pingEl) pingEl.textContent = Math.round(ping);
-            if(jitter && jitterEl) jitterEl.textContent = jitter;
+            // Atualiza também o texto pequeno de Download na caixinha amarela
+            if(downloadEl) downloadEl.textContent = Math.round(velocidade) + " Mbps";
+            
+            // Limpa a conversa com o Kodular para o próximo clique
+            if (window.AppInventor) {
+                window.AppInventor.setWebViewString("");
+            }
         };
 
-        // Quando o usuário clicar em INICIAR no site, avisa o Kodular para disparar a extensão real
+        // Quando o usuário clicar em INICIAR no site, avisa o Kodular
         function acionarTesteRealNoKodular() {
             if(downloadEl) downloadEl.textContent = "...";
-            if(uploadEl) uploadEl.textContent = "...";
-            if(pingEl) pingEl.textContent = "...";
-            if(jitterEl) jitterEl.textContent = "...";
+            if(uploadEl) uploadEl.textContent = "---";
+            if(pingEl) pingEl.textContent = "---";
+            if(jitterEl) jitterEl.textContent = "---";
             setTargetSpeed(0);
             
+            // Envia exatamente o texto que o bloco do seu Kodular está esperando ouvir!
             if (window.AppInventor) {
-                window.AppInventor.setWebViewString("INICIAR_TESTE_REAL");
+                window.AppInventor.setWebViewString("iniciar_teste");
             }
         }
 
