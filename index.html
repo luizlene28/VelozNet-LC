@@ -852,18 +852,23 @@
         // === FUNÇÃO RECEPTORA ATUALIZADA: CONECTA COM O SEU KODULAR DO APP ==
         // ====================================================================
         
-        window.atualizarVelocidade = function(velocidade) {
-            // Move o ponteiro do velocímetro e muda o número do centro
-            setTargetSpeed(parseFloat(velocidade) || 0);
-            
-            // Atualiza também o texto pequeno de Download na caixinha amarela
-            if(downloadEl) downloadEl.textContent = Math.round(velocidade) + " Mbps";
-            
-            // Limpa a conversa com o Kodular para o próximo clique
-            if (window.AppInventor) {
-                window.AppInventor.setWebViewString("");
-            }
-        };
+        window.atualizarVelocidade = function(velocidadeReal) {
+    // Converte o valor que veio do aplicativo para número
+    let vel = parseFloat(velocidadeReal) || 0;
+
+    // Faz o ponteiro BMW girar para a velocidade certa de 0 a 300
+    setTargetSpeed(vel);
+
+    // Atualiza o texto do card de Download com uma casa decimal (ex: 45.2 Mbps)
+    if(downloadEl) {
+        downloadEl.textContent = vel.toFixed(1) + " Mbps";
+    }
+
+    // Limpa a conversa com o App Inventor para o próximo teste
+    if (window.AppInventor) {
+        window.AppInventor.setWebViewString("");
+    }
+};
 
         // Quando o usuário clicar em INICIAR no site, avisa o Kodular
         function acionarTesteRealNoKodular() {
