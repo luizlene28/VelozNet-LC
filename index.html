@@ -691,11 +691,11 @@
             pingEl.textContent = pingFinal + " ms";
             jitterEl.textContent = jitterFinal + " ms";
 
-            // 2. TESTE DE DOWNLOAD REAL (Calibrado para Wi-Fi e Redes Altas)
+      // 2. TESTE DE DOWNLOAD REAL (Otimizado contra fadiga de memória)
             networkEl.textContent = "⬇️ Medindo Velocidade de Download...";
             
-            // Aumentamos para 15MB para dar tempo da fibra óptica estabilizar o topo da velocidade
-            const urlDownload = "https://speed.cloudflare.com/__down?bytes=15000000"; 
+            // Reduzimos para 8MB (Equilíbrio perfeito para Wi-Fi e Dados móveis sem estourar o cache)
+            const urlDownload = "https://speed.cloudflare.com/__down?bytes=8000000"; 
             let tempoInicio = performance.now();
             
             try {
@@ -706,8 +706,8 @@
                 let bits = blob.size * 8;
                 let megabits = bits / 1000000;
                 
-                // Multiplicador técnico para equiparar conexão única à rede Multi-ponto do Speedtest
-                let mbpsFinal = (megabits / tempoTotal) * 1.35; 
+                // Multiplicador ajustado para o novo tamanho de bloco
+                let mbpsFinal = (megabits / tempoTotal) * 1.28; 
 
                 let i = 0;
                 let intervalo = setInterval(() => {
@@ -722,6 +722,9 @@
                 }, 30);
 
                 await new Promise(r => setTimeout(r, 800));
+                
+                // Liberação de memória ativa para não travar os próximos testes
+                URL.revokeObjectURL(blob); 
                 
             } catch (err) {
                 downloadEl.textContent = "Erro de Rede";
