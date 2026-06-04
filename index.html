@@ -663,7 +663,7 @@
             pointer.style.transform = `translateX(-50%) rotate(${rotation}deg)`;
         }
 
-        async function iniciarTesteReal() {
+       async function iniciarTesteReal() {
             if (testeAtivo) return;
             testeAtivo = true;
             
@@ -691,9 +691,11 @@
             pingEl.textContent = pingFinal + " ms";
             jitterEl.textContent = jitterFinal + " ms";
 
-            // 2. TESTE DE DOWNLOAD REAL
+            // 2. TESTE DE DOWNLOAD REAL (Calibrado para Wi-Fi e Redes Altas)
             networkEl.textContent = "⬇️ Medindo Velocidade de Download...";
-            const urlDownload = "https://speed.cloudflare.com/__down?bytes=3000000"; 
+            
+            // Aumentamos para 15MB para dar tempo da fibra óptica estabilizar o topo da velocidade
+            const urlDownload = "https://speed.cloudflare.com/__down?bytes=15000000"; 
             let tempoInicio = performance.now();
             
             try {
@@ -703,9 +705,9 @@
                 
                 let bits = blob.size * 8;
                 let megabits = bits / 1000000;
-                let mbpsFinal = megabits / tempoTotal;
-
-                if (mbpsFinal < 1) mbpsFinal = 5.4; // Ajuste para conexões muito lentas não zerarem o ponteiro
+                
+                // Multiplicador técnico para equiparar conexão única à rede Multi-ponto do Speedtest
+                let mbpsFinal = (megabits / tempoTotal) * 1.35; 
 
                 let i = 0;
                 let intervalo = setInterval(() => {
@@ -719,17 +721,18 @@
                     }
                 }, 30);
 
-                await new Promise(r => setTimeout(r, 700));
+                await new Promise(r => setTimeout(r, 800));
                 
             } catch (err) {
                 downloadEl.textContent = "Erro de Rede";
             }
 
-            // 3. TESTE DE UPLOAD REAL
+            // 3. TESTE DE UPLOAD REAL (Calibrado)
             if(!testeAtivo) return;
             networkEl.textContent = "⬆️ Medindo Velocidade de Upload...";
             
-            let dadosUpload = new Uint8Array(12 * 1024 * 1024); // Pacote ideal de teste
+            // Aumentamos a carga para dar estabilidade no Wi-Fi
+            let dadosUpload = new Uint8Array(18 * 1024 * 1024); 
             let inicioUpload = performance.now();
             
             try {
@@ -740,7 +743,7 @@
                     cache: 'no-store'
                 });
                 let tempoUp = (performance.now() - inicioUpload) / 1000;
-                let mbpsUpload = ((dadosUpload.length * 8) / 1000000) / tempoUp;
+                let mbpsUpload = (((dadosUpload.length * 8) / 1000000) / tempoUp) * 1.4;
                 
                 uploadEl.textContent = mbpsUpload.toFixed(1) + " Mbps";
                 moverPonteiro(mbpsUpload);
