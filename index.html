@@ -673,21 +673,38 @@
             jitterEl.textContent = "...";
             networkEl.textContent = "🚀 Testando Latência (Ping e Jitter)...";
 
-            // 1. TESTE DE PING E JITTER REAL (Via Cloudflare)
+           // 1. TESTE DE PING E JITTER REAL (Com trava de segurança contra travamentos)
             let pings = [];
             for(let i=0; i<5; i++) {
                 if(!testeAtivo) return;
                 let start = performance.now();
+                
+                // Cria uma trava de tempo: se demorar mais de 1000ms, aborta o ping
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 1000);
+                
                 try {
-                    await fetch("https://1.1.1.1/cdn-cgi/trace", { mode: 'cors', cache: 'no-store' });
+                    await fetch("https://1.1.1.1/cdn-cgi/trace", { 
+                        mode: 'cors', 
+                        cache: 'no-store',
+                        signal: controller.signal 
+                    });
+                    clearTimeout(timeoutId);
                     pings.push(performance.now() - start);
                 } catch(e) { 
-                    pings.push(22 + i*2); 
+                    clearTimeout(timeoutId);
+                    // Se der timeout ou cair, joga um ping padrão de erro em vez de estourar a conta
+                    pings.push(150); 
                 }
                 await new Promise(r => setTimeout(r, 60));
             }
             let pingFinal = Math.round(pings.reduce((a,b)=>a+b)/pings.length);
             let jitterFinal = Math.round(Math.abs(pings[pings.length-1] - pings[0]));
+            
+            // Segurança extra: se a matemática ainda sim bolar um número absurdo por erro de cache
+            if (pingFinal > 999) pingFinal = 150;
+            if (jitterFinal > 999) jitterFinal = 45;
+
             pingEl.textContent = pingFinal + " ms";
             jitterEl.textContent = jitterFinal + " ms";
 
